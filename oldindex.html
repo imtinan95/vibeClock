@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vertical Bar Clock</title>
+<style>
+  body {
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: sans-serif;
+  }
+
+  .clock {
+    display: flex;
+    gap: 12px;
+  }
+
+  .digit {
+    width: 40px;
+    height: 240px;
+    position: relative;
+  }
+
+  .bar {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: #eee;
+    border-radius: 6px;
+    transition: height 0.6s ease-in-out;
+  }
+
+  .colon {
+    width: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="clock" id="clock"></div>
+
+<script>
+const clock = document.getElementById("clock");
+
+// height map for digits (0–9)
+const digitMap = {
+  0: 240,
+  1: 40,
+  2: 80,
+  3: 120,
+  4: 160,
+  5: 200,
+  6: 220,
+  7: 180,
+  8: 240,
+  9: 210
+};
+
+function createDigit() {
+  const digit = document.createElement("div");
+  digit.className = "digit";
+
+  const bar = document.createElement("div");
+  bar.className = "bar";
+  digit.appendChild(bar);
+
+  return { digit, bar };
+}
+
+let digits = [];
+
+function setup() {
+  clock.innerHTML = "";
+  digits = [];
+
+  for (let i = 0; i < 4; i++) {
+    const d = createDigit();
+    digits.push(d);
+    clock.appendChild(d.digit);
+
+    if (i === 1) {
+      const colon = document.createElement("div");
+      colon.className = "colon";
+      clock.appendChild(colon);
+    }
+  }
+}
+
+function updateTime() {
+  const now = new Date();
+  const time = now.toTimeString().slice(0, 5).replace(":", "");
+  
+  time.split("").forEach((num, i) => {
+    digits[i].bar.style.height = digitMap[num] + "px";
+  });
+}
+
+setup();
+updateTime();
+setInterval(updateTime, 1000);
+</script>
+
+</body>
+</html>

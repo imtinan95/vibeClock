@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Vertical Bar Clock – Three.js</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    overflow: hidden;
+    font-family: "Outfit", sans-serif;
+    transition: background 0.4s ease;
+  }
+  body.theme-day {
+    background: linear-gradient(180deg, #f5efe8 0%, #ebe3da 50%, #e8e0d8 100%);
+  }
+  body.theme-night {
+    background: linear-gradient(180deg, #1a1625 0%, #0f0d14 50%, #0a0810 100%);
+  }
+  #canvas-container {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #canvas-container canvas {
+    display: block;
+    touch-action: none;
+  }
+  #info {
+    position: fixed;
+    bottom: max(28px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    transition: color 0.4s ease, text-shadow 0.4s ease;
+  }
+  body.theme-day #info {
+    color: #3d3228;
+    text-shadow:
+      0 0 20px rgba(255, 240, 220, 0.7),
+      0 0 40px rgba(255, 230, 200, 0.4),
+      0 2px 4px rgba(0, 0, 0, 0.15),
+      0 1px 2px rgba(255, 255, 255, 0.6);
+  }
+  body.theme-night #info {
+    color: #f0e8e0;
+    text-shadow:
+      0 0 24px rgba(255, 240, 220, 0.5),
+      0 0 48px rgba(255, 220, 180, 0.3),
+      0 2px 4px rgba(0, 0, 0, 0.5);
+  }
+  #theme-btn {
+    position: fixed;
+    top: max(20px, env(safe-area-inset-top));
+    left: max(20px, env(safe-area-inset-left));
+    z-index: 10;
+    padding: 12px 20px;
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Outfit", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+  }
+  @media (max-width: 480px) {
+    #theme-btn {
+      padding: 14px 22px;
+      font-size: 13px;
+    }
+    #info {
+      font-size: 12px;
+      bottom: max(24px, env(safe-area-inset-bottom));
+    }
+  }
+  body.theme-day #theme-btn {
+    background: rgba(255, 255, 255, 0.9);
+    color: #4a3c32;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12), 0 0 20px rgba(255, 240, 220, 0.3);
+  }
+  body.theme-night #theme-btn {
+    background: rgba(255, 255, 255, 0.12);
+    color: #f0e8e0;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 220, 180, 0.15);
+  }
+  #theme-btn:hover {
+    filter: brightness(1.05);
+  }
+</style>
+</head>
+<body class="theme-day">
+
+<div id="canvas-container"></div>
+<button type="button" id="theme-btn" aria-label="Toggle day/night">Night</button>
+<p id="info">--:--:--</p>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const container = document.getElementById('canvas-container');
+const timeTextEl = document.getElementById('info');
+
+// Scene – day/night backgrounds
+function createBgCanvas(day) {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 512;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(256, 220, 0, 256, 256, 420);
+  if (day) {
+    g.addColorStop(0, '#faf4ee');
+    g.addColorStop(0.35, '#f2ebe2');
+    g.addColorStop(0.65, '#ebe3da');
+    g.addColorStop(1, '#e5ddd4');
+  } else {
+    g.addColorStop(0, '#2e2430');
+    g.addColorStop(0.25, '#251e28');
+    g.addColorStop(0.5, '#1a1625');
+    g.addColorStop(0.8, '#0f0d14');
+    g.addColorStop(1, '#0a0810');
+  }
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 512, 512);
+  return new THREE.CanvasTexture(c);
+}
+const scene = new THREE.Scene();
+scene.background = createBgCanvas(true);
+scene.fog = new THREE.FogExp2(0xe8e0d8, 0.022);
+
+// Camera – looking from above, zoomed out
+const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 22, 8);
+camera.lookAt(0, 0, 0);
+
+// Mobile detection for lighter shadows
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 'ontouchstart' in window;
+
+// Renderer – enable shadows; smaller shadow map on mobile for performance
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+if (isMobile) renderer.domElement.style.touchAction = 'none';
+container.appendChild(renderer.domElement);
+
+// Zoom and pan controls – camera stays in front of clock, limited pan
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 8;
+controls.maxDistance = 45;
+controls.maxPolarAngle = Math.PI * 0.52;
+controls.minPolarAngle = 0.2;
+controls.maxAzimuthAngle = 0.48;
+controls.minAzimuthAngle = -0.48;
+controls.enablePan = true;
+controls.panSpeed = 0.8;
+controls.zoomSpeed = 1.2;
+const PAN_LIMIT_X = 3.5;
+const PAN_LIMIT_Y = 2.5;
+
+// Lights – day: soft heavenly; night: street lamp above, cozy
+const ambient = new THREE.AmbientLight(0xffeedd, 0.45);
+scene.add(ambient);
+const key = new THREE.DirectionalLight(0xfff5e8, 0.85);
+key.position.set(0, 12, 6);
+key.castShadow = true;
+key.shadow.mapSize.width = isMobile ? 512 : 1024;
+key.shadow.mapSize.height = isMobile ? 512 : 1024;
+key.shadow.camera.near = 2;
+key.shadow.camera.far = 50;
+key.shadow.camera.left = -8;
+key.shadow.camera.right = 8;
+key.shadow.camera.top = 8;
+key.shadow.camera.bottom = -8;
+key.shadow.bias = -0.0002;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xc4b8ff, 0.35);
+fill.position.set(-3, 4, 4);
+scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffe4c4, 0.2);
+rim.position.set(2, 6, -2);
+scene.add(rim);
+
+// Digit textures: dark (strip) and light (inside circle) – reference vision.png
+const darkDigitTextures = [];
+const lightDigitTextures = [];
+function createDigitTexture(digit, dark) {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,0)';
+  ctx.fillRect(0, 0, size, size);
+  if (dark) {
+    ctx.fillStyle = 'rgba(80, 70, 65, 0.9)';
+  } else {
+    ctx.fillStyle = 'rgba(255, 250, 245, 0.98)';
+    ctx.shadowColor = 'rgba(200, 190, 180, 0.5)';
+    ctx.shadowBlur = 8;
+  }
+  ctx.font = 'bold 90px Outfit, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(digit), size / 2, size / 2);
+  ctx.shadowBlur = 0;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
+for (let i = 0; i <= 9; i++) {
+  darkDigitTextures.push(createDigitTexture(i, true));
+  lightDigitTextures.push(createDigitTexture(i, false));
+}
+
+// Block dimensions – thicker bars, one block per column, padding at bottom
+const BLOCK_WIDTH = 0.52;
+const BLOCK_HEIGHT = 0.85;
+const BLOCK_GAP = 0.12;
+const BLOCK_SPACING = BLOCK_HEIGHT + BLOCK_GAP;
+const STRIP_PADDING_BOTTOM = 0.28;
+const STRIP_HEIGHT = 10 * BLOCK_SPACING - BLOCK_GAP + STRIP_PADDING_BOTTOM;
+const BLOCK_DEPTH = 0.32;
+const BLOCK_CORNER_RADIUS = 0.09;
+const COLUMN_SPACING = 1.4;
+const PLANE_W = BLOCK_WIDTH * 0.88;
+const PLANE_H = BLOCK_HEIGHT * 0.72;
+
+// One block per column – recessed panel, more shadow and emission
+const blockMaterial = new THREE.MeshStandardMaterial({
+  color: 0xe0dcd6,
+  emissive: 0x3d3540,
+  emissiveIntensity: 0.22,
+  metalness: 0.08,
+  roughness: 0.78,
+});
+
+// Create one digit column: one block (strip) that moves; circle fixed in place
+function createDigitColumn(index) {
+  const group = new THREE.Group();
+  group.userData.targetStripY = 0;
+
+  const planeGeom = new THREE.PlaneGeometry(PLANE_W, PLANE_H);
+
+  // Strip group – block + digits move together so current digit aligns with fixed circle
+  const stripGroup = new THREE.Group();
+  stripGroup.position.y = 0;
+
+  // Single block – rounded top and bottom ends (pill-like bar)
+  const blockGeom = new RoundedBoxGeometry(BLOCK_WIDTH * 1.06, STRIP_HEIGHT, BLOCK_DEPTH, 4, BLOCK_CORNER_RADIUS);
+  const block = new THREE.Mesh(blockGeom, blockMaterial);
+  block.position.y = STRIP_HEIGHT / 2;
+  block.castShadow = true;
+  block.receiveShadow = true;
+  stripGroup.add(block);
+
+  // Numbers 0–9 stacked inside the block, 0 at top and 9 at bottom; extra padding at bottom
+  for (let d = 0; d <= 9; d++) {
+    const planeMat = new THREE.MeshBasicMaterial({
+      map: darkDigitTextures[d],
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const plane = new THREE.Mesh(planeGeom, planeMat);
+    plane.position.set(0, STRIP_PADDING_BOTTOM + (9 - d) * BLOCK_SPACING, BLOCK_DEPTH / 2 + 0.01);
+    stripGroup.add(plane);
+  }
+
+  // Highlight digit (light) inside the circle – slightly scaled to suggest magnification
+  const highlightMat = new THREE.MeshBasicMaterial({
+    map: lightDigitTextures[0],
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const highlightPlane = new THREE.Mesh(planeGeom, highlightMat);
+  highlightPlane.position.z = BLOCK_DEPTH / 2 + 0.06;
+  highlightPlane.scale.setScalar(1.18);
+  stripGroup.add(highlightPlane);
+  group.userData.highlightPlane = highlightPlane;
+  group.userData.highlightPlaneMat = highlightMat;
+
+  group.add(stripGroup);
+  group.userData.stripGroup = stripGroup;
+
+  // Glass circle – ring + disc with transmission for magnifying look
+  const circleRadius = PLANE_W * 0.58;
+  const ringGeom = new THREE.TorusGeometry(circleRadius, 0.055, 24, 48);
+  const ringMat = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.92,
+    transmission: 0.85,
+    thickness: 0.12,
+    roughness: 0.05,
+    metalness: 0,
+    ior: 1.45,
+    envMapIntensity: 0.6,
+  });
+  const ring = new THREE.Mesh(ringGeom, ringMat);
+  ring.position.set(0, 0, BLOCK_DEPTH / 2 + 0.04);
+  group.add(ring);
+  const glassDiscGeom = new THREE.CircleGeometry(circleRadius - 0.02, 48);
+  const glassDiscMat = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.75,
+    transmission: 0.9,
+    thickness: 0.08,
+    roughness: 0.04,
+    metalness: 0,
+    ior: 1.5,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const glassDisc = new THREE.Mesh(glassDiscGeom, glassDiscMat);
+  glassDisc.position.set(0, 0, BLOCK_DEPTH / 2 + 0.035);
+  group.add(glassDisc);
+
+  // Position column along X: 6 columns (HH : MM : SS)
+  group.position.x = (index - 2.5) * COLUMN_SPACING;
+  group.position.y = 0;
+  group.position.z = 0;
+
+  return group;
+}
+
+// Create colons – soft heavenly dots (add to parent)
+function createColons(parent) {
+  const geom = new THREE.SphereGeometry(0.1, 20, 20);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0xfff0e0,
+    transparent: true,
+    opacity: 0.7,
+  });
+  const colonX = [-1.4, 1.4];
+  colonX.forEach((x) => {
+    const group = new THREE.Group();
+    group.position.x = x;
+    const c1 = new THREE.Mesh(geom, mat.clone());
+    c1.position.set(0, 0.25, 0);
+    const c2 = new THREE.Mesh(geom, mat.clone());
+    c2.position.set(0, -0.25, 0);
+    group.add(c1);
+    group.add(c2);
+    parent.add(group);
+  });
+}
+
+// Clock at an angle – tilted so we see it from above, scaled to fit on screen
+const clockGroup = new THREE.Group();
+clockGroup.rotation.x = -0.6;   // tilt back so face is visible from above
+clockGroup.rotation.y = 0.35;   // turn slightly to the side
+clockGroup.scale.setScalar(0.72);  // keep full clock on screen with margin
+scene.add(clockGroup);
+
+// Build clock: 6 columns
+const digitGroups = [];
+for (let i = 0; i < 6; i++) {
+  const col = createDigitColumn(i);
+  clockGroup.add(col);
+  digitGroups.push(col);
+}
+createColons(clockGroup);
+
+// Current digits (HH MM SS)
+let currentDigits = [0, 0, 0, 0, 0, 0];
+const lerpSpeed = 0.12;
+
+function getTimeDigits() {
+  const now = new Date();
+  const h = now.getHours();
+  const m = now.getMinutes();
+  const s = now.getSeconds();
+  return [
+    Math.floor(h / 10), h % 10,
+    Math.floor(m / 10), m % 10,
+    Math.floor(s / 10), s % 10,
+  ];
+}
+
+function updateTime() {
+  const digits = getTimeDigits();
+  timeTextEl.textContent = new Date().toTimeString().slice(0, 8);
+  digits.forEach((d, i) => {
+    const col = digitGroups[i];
+    col.userData.targetStripY = -STRIP_PADDING_BOTTOM + (d - 9) * BLOCK_SPACING;
+    col.userData.highlightPlane.position.y = STRIP_PADDING_BOTTOM + (9 - d) * BLOCK_SPACING;
+    col.userData.highlightPlaneMat.map = lightDigitTextures[d];
+  });
+  currentDigits = digits;
+}
+
+// Animation loop – move strip (lerp), clamp pan target, update controls
+function animate() {
+  requestAnimationFrame(animate);
+  const t = lerpSpeed;
+  digitGroups.forEach((group) => {
+    const strip = group.userData.stripGroup;
+    const target = group.userData.targetStripY;
+    if (strip) strip.position.y += (target - strip.position.y) * t;
+  });
+  controls.target.x = Math.max(-PAN_LIMIT_X, Math.min(PAN_LIMIT_X, controls.target.x));
+  controls.target.y = Math.max(-PAN_LIMIT_Y, Math.min(PAN_LIMIT_Y, controls.target.y));
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+updateTime();
+setInterval(updateTime, 1000);
+animate();
+
+// Resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Day / Night theme – current theme is day
+let isDay = true;
+const themeBtn = document.getElementById('theme-btn');
+
+function applyTheme(day) {
+  isDay = day;
+  document.body.className = day ? 'theme-day' : 'theme-night';
+  themeBtn.textContent = day ? 'Night' : 'Day';
+  scene.background = createBgCanvas(day);
+  scene.fog = new THREE.FogExp2(day ? 0xe8e0d8 : 0x120f18, day ? 0.022 : 0.032);
+  blockMaterial.emissive.setHex(day ? 0x3d3540 : 0x1a1520);
+  blockMaterial.emissiveIntensity = day ? 0.22 : 0.35;
+  blockMaterial.color.setHex(day ? 0xe0dcd6 : 0x2a2630);
+  // Day: soft diffuse; Night: street lamp above – warm amber, cozy
+  if (day) {
+    ambient.color.setHex(0xffeedd);
+    ambient.intensity = 0.45;
+    key.color.setHex(0xfff5e8);
+    key.intensity = 0.85;
+    key.position.set(0, 12, 6);
+    fill.color.setHex(0xc4b8ff);
+    fill.intensity = 0.35;
+    rim.color.setHex(0xffe4c4);
+    rim.intensity = 0.2;
+  } else {
+    ambient.color.setHex(0x2a2030);
+    ambient.intensity = 0.18;
+    key.color.setHex(0xffaa66);
+    key.intensity = 0.95;
+    key.position.set(0, 18, 2);
+    fill.color.setHex(0x664433);
+    fill.intensity = 0.12;
+    rim.color.setHex(0xff8844);
+    rim.intensity = 0.08;
+  }
+}
+
+themeBtn.addEventListener('click', () => {
+  isDay = !isDay;
+  applyTheme(isDay);
+});
+
+applyTheme(true);
+</script>
+
+</body>
+</html>
