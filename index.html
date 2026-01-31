@@ -204,10 +204,14 @@
   body.theme-night .settings-divider { background: rgba(255,255,255,0.1); }
   .text-size-small { font-size: 9px !important; }
   .text-size-medium { font-size: 11px !important; }
-  .text-size-large { font-size: 14px !important; }
+  .text-size-normal { font-size: 14px !important; }
+  .text-size-large { font-size: 18px !important; }
+  .text-size-extra-large { font-size: 22px !important; }
   #info-alt.text-size-small { font-size: 8px !important; }
   #info-alt.text-size-medium { font-size: 10px !important; }
-  #info-alt.text-size-large { font-size: 12px !important; }
+  #info-alt.text-size-normal { font-size: 12px !important; }
+  #info-alt.text-size-large { font-size: 16px !important; }
+  #info-alt.text-size-extra-large { font-size: 20px !important; }
   @media (max-width: 480px) {
     #settings-dropdown { min-width: 260px; }
     #info { font-size: 12px; }
@@ -288,11 +292,19 @@
         <option value="America/New_York">New York</option>
         <option value="America/Los_Angeles">Los Angeles</option>
         <option value="America/Chicago">Chicago</option>
+        <option value="America/Denver">Denver</option>
+        <option value="America/Toronto">Toronto</option>
         <option value="Europe/London">London</option>
         <option value="Europe/Paris">Paris</option>
+        <option value="Europe/Berlin">Berlin</option>
+        <option value="Asia/Karachi">Islamabad</option>
+        <option value="Asia/Dubai">Dubai</option>
+        <option value="Asia/Kolkata">Mumbai</option>
         <option value="Asia/Tokyo">Tokyo</option>
         <option value="Asia/Shanghai">Shanghai</option>
+        <option value="Asia/Singapore">Singapore</option>
         <option value="Australia/Sydney">Sydney</option>
+        <option value="Pacific/Auckland">Auckland</option>
         <option value="UTC">UTC</option>
       </select>
     </div>
@@ -303,8 +315,10 @@
       <label>Main clock</label>
       <select id="text-size-main" class="settings-select">
         <option value="small">Small</option>
-        <option value="medium" selected>Medium</option>
+        <option value="medium">Medium</option>
+        <option value="normal" selected>Normal</option>
         <option value="large">Large</option>
+        <option value="extra-large">Extra Large</option>
       </select>
     </div>
     <div class="color-picker-row">
@@ -312,8 +326,17 @@
       <select id="text-size-alt" class="settings-select">
         <option value="small" selected>Small</option>
         <option value="medium">Medium</option>
+        <option value="normal">Normal</option>
         <option value="large">Large</option>
+        <option value="extra-large">Extra Large</option>
       </select>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Colon</div>
+    <div class="settings-row">
+      <button type="button" class="settings-btn colon-tick-opt" data-tick="false">Static</button>
+      <button type="button" class="settings-btn colon-tick-opt" data-tick="true">Tick</button>
     </div>
   </div>
 </div>
@@ -346,8 +369,9 @@ const DEFAULT_SETTINGS = {
   dayBgTop: '#f5efe8', dayBgMid: '#ebe3da', dayBgBot: '#e8e0d8', dayBar: '#e0dcd6',
   nightBgTop: '#1a1625', nightBgMid: '#0f0d14', nightBgBot: '#0a0810', nightBar: '#2a2630',
   altTimezone: '',
-  textSizeMain: 'medium',
+  textSizeMain: 'normal',
   textSizeAlt: 'small',
+  colonTick: false,
 };
 function loadSettings() {
   try {
@@ -409,7 +433,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 if (isMobile) renderer.domElement.style.touchAction = 'none';
 container.appendChild(renderer.domElement);
 
-// Controls – zoom/pan by default; rotate only with CTRL+Right Click
+// Controls – left-click/touch orbit, right-click pan
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0, 0);
 controls.enableDamping = true;
@@ -419,29 +443,10 @@ controls.maxDistance = 45;
 controls.enablePan = true;
 controls.panSpeed = 0.8;
 controls.zoomSpeed = 1.2;
-controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: null };
-controls.enableRotate = false;
+controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
 const PAN_LIMIT_X = 3.5;
 const PAN_LIMIT_Y = 2.5;
-
-// CTRL+Right Click to rotate – enable only when both held
 renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
-renderer.domElement.addEventListener('mousedown', (e) => {
-  if (e.button === 2) {
-    controls.enableRotate = e.ctrlKey;
-    controls.mouseButtons.RIGHT = e.ctrlKey ? THREE.MOUSE.ROTATE : null;
-  }
-});
-renderer.domElement.addEventListener('mouseup', (e) => {
-  if (e.button === 2) {
-    controls.enableRotate = false;
-    controls.mouseButtons.RIGHT = null;
-  }
-});
-renderer.domElement.addEventListener('mouseleave', () => {
-  controls.enableRotate = false;
-  controls.mouseButtons.RIGHT = null;
-});
 
 // Lights – day: soft heavenly; night: street lamp above, cozy
 const ambient = new THREE.AmbientLight(0xffeedd, 0.45);
@@ -498,7 +503,7 @@ for (let i = 0; i <= 9; i++) {
   lightDigitTextures.push(createDigitTexture(i, false));
 }
 
-// AM/PM textures (for 12-hour mode)
+// AM/PM textures (for 12-hour mode) – larger text
 function createAmPmTexture(label, dark) {
   const size = 128;
   const canvas = document.createElement('canvas');
@@ -513,7 +518,7 @@ function createAmPmTexture(label, dark) {
     ctx.shadowColor = 'rgba(200, 190, 180, 0.5)';
     ctx.shadowBlur = 8;
   }
-  ctx.font = 'bold 48px Outfit, sans-serif';
+  ctx.font = 'bold 72px Outfit, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(label, size / 2, size / 2);
@@ -531,17 +536,28 @@ const BLOCK_HEIGHT = 0.85;
 const BLOCK_GAP = 0.12;
 const BLOCK_SPACING = BLOCK_HEIGHT + BLOCK_GAP;
 const STRIP_PADDING_BOTTOM = 0.28;
-const STRIP_HEIGHT = 10 * BLOCK_SPACING - BLOCK_GAP + STRIP_PADDING_BOTTOM;
 const BLOCK_DEPTH = 0.32;
 const BAR_WIDTH = BLOCK_WIDTH * 1.06;
-const CAPSULE_RADIUS = Math.min(BAR_WIDTH, BLOCK_DEPTH) / 2;  // Max safe radius for pill shape
+const CAPSULE_RADIUS = Math.min(BAR_WIDTH, BLOCK_DEPTH) / 2;
 const COLUMN_SPACING = 1.4;
 const PLANE_W = BLOCK_WIDTH * 0.88;
 const PLANE_H = BLOCK_HEIGHT * 0.72;
 
-// Capsule-like bar – RoundedBox with max corner radius for pill shape
-function createCapsuleBarGeometry() {
-  return new RoundedBoxGeometry(BAR_WIDTH, STRIP_HEIGHT, BLOCK_DEPTH, 6, CAPSULE_RADIUS);
+function getStripHeight(numDigits) {
+  return numDigits * BLOCK_SPACING - BLOCK_GAP + STRIP_PADDING_BOTTOM;
+}
+
+// Column config: { numDigits, digitIndices, isAmPm }
+function getColumnConfig(columnType, use24) {
+  if (columnType === 'ampm') return { numDigits: 2, digitIndices: [0, 1], isAmPm: true };
+  if (columnType === 'h1') return { numDigits: use24 ? 3 : 2, digitIndices: null, isAmPm: false };
+  if (columnType === 'm1' || columnType === 's1') return { numDigits: 6, digitIndices: null, isAmPm: false };
+  return { numDigits: 10, digitIndices: null, isAmPm: false };
+}
+
+function createCapsuleBarGeometry(height) {
+  const r = Math.min(CAPSULE_RADIUS, height / 4);
+  return new RoundedBoxGeometry(BAR_WIDTH, height, BLOCK_DEPTH, 6, r);
 }
 
 // One block per column – recessed panel; color updated from settings
@@ -554,35 +570,39 @@ const blockMaterial = new THREE.MeshStandardMaterial({
 });
 
 // Create one digit column: one block (strip) that moves; circle fixed in place
-function createDigitColumn(index, totalColumns, isAmPm = false) {
+function createDigitColumn(index, totalColumns, columnType, use24) {
+  const config = getColumnConfig(columnType, use24);
+  const { numDigits, digitIndices, isAmPm } = config;
+  const stripHeight = getStripHeight(numDigits);
+  const maxD = numDigits - 1;
+
   const group = new THREE.Group();
   group.userData.targetStripY = 0;
   group.userData.isAmPm = isAmPm;
+  group.userData.maxD = maxD;
 
   const planeGeom = new THREE.PlaneGeometry(PLANE_W, PLANE_H);
-  const digitTextures = isAmPm ? [darkAmPmTextures[0], darkAmPmTextures[1]] : darkDigitTextures;
-  const lightTextures = isAmPm ? [lightAmPmTextures[0], lightAmPmTextures[1]] : lightDigitTextures;
+  const getTex = (d, dark) => {
+    if (isAmPm) return (dark ? darkAmPmTextures : lightAmPmTextures)[d];
+    const idx = digitIndices ? digitIndices[d] : d;
+    return (dark ? darkDigitTextures : lightDigitTextures)[idx];
+  };
 
-  // Strip group – block + digits move together
   const stripGroup = new THREE.Group();
   stripGroup.position.y = 0;
 
-  // Capsule-shaped bar (pill with fully rounded ends)
-  const blockGeom = createCapsuleBarGeometry();
+  const blockGeom = createCapsuleBarGeometry(stripHeight);
   const blockMat = blockMaterial.clone();
   const block = new THREE.Mesh(blockGeom, blockMat);
-  block.position.y = STRIP_HEIGHT / 2;
+  block.position.y = stripHeight / 2;
   block.castShadow = true;
   block.receiveShadow = true;
   stripGroup.add(block);
   group.userData.blockMat = blockMat;
 
-  const numDigits = isAmPm ? 2 : 10;
-  const maxD = numDigits - 1;
-  // Numbers stacked inside the block, 0 at top and max at bottom
   for (let d = 0; d < numDigits; d++) {
     const planeMat = new THREE.MeshBasicMaterial({
-      map: digitTextures[d],
+      map: getTex(d, true),
       transparent: true,
       side: THREE.DoubleSide,
       depthWrite: false,
@@ -592,24 +612,23 @@ function createDigitColumn(index, totalColumns, isAmPm = false) {
     stripGroup.add(plane);
   }
 
-  // Highlight digit (light) inside the circle – slightly scaled to suggest magnification
   const highlightMat = new THREE.MeshBasicMaterial({
-    map: lightTextures[0],
+    map: getTex(0, false),
     transparent: true,
     side: THREE.DoubleSide,
     depthWrite: false,
   });
   const highlightPlane = new THREE.Mesh(planeGeom, highlightMat);
   highlightPlane.position.z = BLOCK_DEPTH / 2 + 0.06;
-  highlightPlane.scale.setScalar(1.18);
+  highlightPlane.scale.setScalar(isAmPm ? 1.35 : 1.18);
   stripGroup.add(highlightPlane);
   group.userData.highlightPlane = highlightPlane;
   group.userData.highlightPlaneMat = highlightMat;
+  group.userData.getTex = getTex;
 
   group.add(stripGroup);
   group.userData.stripGroup = stripGroup;
 
-  // Glass circle – ring + disc with transmission for magnifying look
   const circleRadius = PLANE_W * 0.58;
   const ringGeom = new THREE.TorusGeometry(circleRadius, 0.055, 24, 48);
   const ringMat = new THREE.MeshPhysicalMaterial({
@@ -648,31 +667,35 @@ function createDigitColumn(index, totalColumns, isAmPm = false) {
   group.position.y = 0;
   group.position.z = 0;
 
-  if (isAmPm) group.scale.setScalar(0.55);  // Smaller AM/PM bar
+  if (isAmPm) group.scale.setScalar(0.5);
 
   return group;
 }
 
-// Create colons – soft heavenly dots; x positions depend on column count
+// Create colons – soft heavenly dots; store refs for tick animation
 function createColons(parent, use24) {
+  colonGroups = [];
   const geom = new THREE.SphereGeometry(0.1, 20, 20);
-  const mat = new THREE.MeshBasicMaterial({
-    color: 0xfff0e0,
-    transparent: true,
-    opacity: 0.7,
-  });
-  const colonX = use24 ? [-1.4, 1.4] : [-2.1, 0.7];  // Between HH:MM and MM:SS
+  const colonX = use24 ? [-1.4, 1.4] : [-2.1, 0.7];
   colonX.forEach((x) => {
     const group = new THREE.Group();
     group.userData.isColon = true;
     group.position.x = x;
-    const c1 = new THREE.Mesh(geom, mat.clone());
+    const mat1 = new THREE.MeshBasicMaterial({
+      color: 0xfff0e0,
+      transparent: true,
+      opacity: 0.7,
+    });
+    const mat2 = mat1.clone();
+    const c1 = new THREE.Mesh(geom, mat1);
     c1.position.set(0, 0.25, 0);
-    const c2 = new THREE.Mesh(geom, mat.clone());
+    const c2 = new THREE.Mesh(geom, mat2);
     c2.position.set(0, -0.25, 0);
     group.add(c1);
     group.add(c2);
+    group.userData.mats = [mat1, mat2];
     parent.add(group);
+    colonGroups.push(group);
   });
 }
 
@@ -684,27 +707,28 @@ scene.add(clockGroup);
 
 // Build clock – columns built dynamically based on format
 let digitGroups = [];
-let amPmColumn = null;
+let colonGroups = [];
+
+const COLUMN_TYPES_24 = ['h1', 'h2', 'm1', 'm2', 's1', 's2'];
+const COLUMN_TYPES_12 = ['h1', 'h2', 'm1', 'm2', 's1', 's2', 'ampm'];
 
 function buildClock() {
   digitGroups = [];
-  amPmColumn = null;
+  colonGroups = [];
   const use24 = settings.format24 !== false;
-  const totalCols = use24 ? 6 : 7;
+  const colTypes = use24 ? COLUMN_TYPES_24 : COLUMN_TYPES_12;
+  const totalCols = colTypes.length;
 
-  // Remove existing digit columns and colons
   const toRemove = clockGroup.children.filter(c => 
     (c.userData && c.userData.isDigitColumn) || (c.userData && c.userData.isColon)
   );
   toRemove.forEach(c => clockGroup.remove(c));
 
   for (let i = 0; i < totalCols; i++) {
-    const isAmPm = !use24 && i === 6;
-    const col = createDigitColumn(i, totalCols, isAmPm);
+    const col = createDigitColumn(i, totalCols, colTypes[i], use24);
     col.userData.isDigitColumn = true;
     clockGroup.add(col);
     digitGroups.push(col);
-    if (isAmPm) amPmColumn = col;
   }
   createColons(clockGroup, use24);
 }
@@ -778,16 +802,15 @@ function updateTime() {
   digits.forEach((d, i) => {
     const col = digitGroups[i];
     if (!col) return;
-    const colMaxD = col.userData.isAmPm ? 1 : 9;
+    const colMaxD = col.userData.maxD;
     col.userData.targetStripY = -STRIP_PADDING_BOTTOM + (d - colMaxD) * BLOCK_SPACING;
     col.userData.highlightPlane.position.y = STRIP_PADDING_BOTTOM + (colMaxD - d) * BLOCK_SPACING;
-    const texArr = col.userData.isAmPm ? lightAmPmTextures : lightDigitTextures;
-    col.userData.highlightPlaneMat.map = texArr[d];
+    col.userData.highlightPlaneMat.map = col.userData.getTex(d, false);
   });
   currentDigits = digits;
 }
 
-// Animation loop – move strip (lerp), clamp pan target, update controls
+// Animation loop – move strip, colon tick, update controls
 function animate() {
   requestAnimationFrame(animate);
   const t = lerpSpeed;
@@ -796,6 +819,15 @@ function animate() {
     const target = group.userData.targetStripY;
     if (strip) strip.position.y += (target - strip.position.y) * t;
   });
+  if (colonGroups.length) {
+    if (settings.colonTick) {
+      const secProgress = (Date.now() % 1000) / 1000;
+      const flash = secProgress < 0.15 ? 1 : 0.4;
+      colonGroups.forEach((g) => (g.userData.mats || []).forEach((m) => { m.opacity = flash; }));
+    } else {
+      colonGroups.forEach((g) => (g.userData.mats || []).forEach((m) => { m.opacity = 0.7; }));
+    }
+  }
   controls.target.x = Math.max(-PAN_LIMIT_X, Math.min(PAN_LIMIT_X, controls.target.x));
   controls.target.y = Math.max(-PAN_LIMIT_Y, Math.min(PAN_LIMIT_Y, controls.target.y));
   controls.update();
@@ -893,21 +925,28 @@ function updateFormatButtons() {
 }
 
 function applyTextSizes() {
-  const mainSize = settings.textSizeMain || 'medium';
+  const mainSize = settings.textSizeMain || 'normal';
   const altSize = settings.textSizeAlt || 'small';
   timeTextEl.className = 'text-size-' + mainSize;
   document.getElementById('info-alt').className = 'text-size-' + altSize + (settings.altTimezone ? '' : ' hidden');
+}
+
+function updateColonTickButtons() {
+  document.querySelectorAll('.colon-tick-opt').forEach((b) => {
+    b.classList.toggle('active', (b.dataset.tick === 'true') === !!settings.colonTick);
+  });
 }
 
 function syncSettingsDropdown() {
   syncColorPickers();
   updateThemeButtons();
   updateFormatButtons();
+  updateColonTickButtons();
   const altSel = document.getElementById('alt-timezone');
   const mainSel = document.getElementById('text-size-main');
   const altSizeSel = document.getElementById('text-size-alt');
   if (altSel) altSel.value = settings.altTimezone || '';
-  if (mainSel) mainSel.value = settings.textSizeMain || 'medium';
+  if (mainSel) mainSel.value = settings.textSizeMain || 'normal';
   if (altSizeSel) altSizeSel.value = settings.textSizeAlt || 'small';
 }
 
@@ -972,7 +1011,7 @@ document.getElementById('alt-timezone')?.addEventListener('change', (e) => {
 });
 
 document.getElementById('text-size-main')?.addEventListener('change', (e) => {
-  settings.textSizeMain = e.target.value || 'medium';
+  settings.textSizeMain = e.target.value || 'normal';
   saveSettings(settings);
   applyTextSizes();
 });
@@ -981,6 +1020,14 @@ document.getElementById('text-size-alt')?.addEventListener('change', (e) => {
   settings.textSizeAlt = e.target.value || 'small';
   saveSettings(settings);
   applyTextSizes();
+});
+
+document.querySelectorAll('.colon-tick-opt').forEach((b) => {
+  b.addEventListener('click', () => {
+    settings.colonTick = b.dataset.tick === 'true';
+    saveSettings(settings);
+    updateColonTickButtons();
+  });
 });
 
 // Init from saved settings
