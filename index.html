@@ -16,10 +16,10 @@
     transition: background 0.4s ease;
   }
   body.theme-day {
-    background: linear-gradient(180deg, #f5efe8 0%, #ebe3da 50%, #e8e0d8 100%);
+    background: linear-gradient(180deg, var(--bg-top, #f5efe8) 0%, var(--bg-mid, #ebe3da) 50%, var(--bg-bot, #e8e0d8) 100%);
   }
   body.theme-night {
-    background: linear-gradient(180deg, #1a1625 0%, #0f0d14 50%, #0a0810 100%);
+    background: linear-gradient(180deg, var(--bg-top, #1a1625) 0%, var(--bg-mid, #0f0d14) 50%, var(--bg-bot, #0a0810) 100%);
   }
   #canvas-container {
     position: fixed;
@@ -61,57 +61,190 @@
       0 0 48px rgba(255, 220, 180, 0.3),
       0 2px 4px rgba(0, 0, 0, 0.5);
   }
-  #theme-btn {
+  #settings-gear {
     position: fixed;
     top: max(20px, env(safe-area-inset-top));
     left: max(20px, env(safe-area-inset-left));
-    z-index: 10;
-    padding: 12px 20px;
-    min-height: 44px;
-    min-width: 44px;
-    display: inline-flex;
+    z-index: 11;
+    width: 44px;
+    height: 44px;
+    display: flex;
     align-items: center;
     justify-content: center;
-    font-family: "Outfit", sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-    transition: background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+    transition: background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
   }
-  @media (max-width: 480px) {
-    #theme-btn {
-      padding: 14px 22px;
-      font-size: 13px;
-    }
-    #info {
-      font-size: 12px;
-      bottom: max(24px, env(safe-area-inset-bottom));
-    }
-  }
-  body.theme-day #theme-btn {
+  #settings-gear:hover { transform: rotate(90deg); }
+  #settings-gear svg { width: 22px; height: 22px; }
+  body.theme-day #settings-gear {
     background: rgba(255, 255, 255, 0.9);
     color: #4a3c32;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12), 0 0 20px rgba(255, 240, 220, 0.3);
   }
-  body.theme-night #theme-btn {
+  body.theme-night #settings-gear {
     background: rgba(255, 255, 255, 0.12);
     color: #f0e8e0;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 220, 180, 0.15);
   }
-  #theme-btn:hover {
-    filter: brightness(1.05);
+  #settings-dropdown {
+    position: fixed;
+    top: max(68px, calc(20px + env(safe-area-inset-top) + 44px));
+    left: max(20px, env(safe-area-inset-left));
+    z-index: 12;
+    min-width: 280px;
+    max-width: 90vw;
+    max-height: 75vh;
+    overflow-y: auto;
+    border-radius: 12px;
+    font-family: "Outfit", sans-serif;
+    font-size: 13px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    display: none;
+    flex-direction: column;
+    gap: 0;
+  }
+  #settings-dropdown.open { display: flex; }
+  body.theme-day #settings-dropdown {
+    background: rgba(255, 252, 248, 0.98);
+    color: #3d3228;
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+  body.theme-night #settings-dropdown {
+    background: rgba(30, 26, 38, 0.98);
+    color: #f0e8e0;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .settings-section {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+  body.theme-night .settings-section { border-bottom-color: rgba(255,255,255,0.08); }
+  .settings-section:last-child { border-bottom: none; }
+  .settings-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-bottom: 8px;
+  }
+  .settings-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .settings-row:last-child { margin-bottom: 0; }
+  .settings-btn {
+    padding: 8px 14px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    flex: 1;
+    min-width: 70px;
+  }
+  body.theme-day .settings-btn {
+    background: rgba(0,0,0,0.06);
+    color: #4a3c32;
+  }
+  body.theme-day .settings-btn:hover { background: rgba(0,0,0,0.12); }
+  body.theme-day .settings-btn.active {
+    background: #4a3c32;
+    color: #f5efe8;
+  }
+  body.theme-night .settings-btn {
+    background: rgba(255,255,255,0.08);
+    color: #f0e8e0;
+  }
+  body.theme-night .settings-btn:hover { background: rgba(255,255,255,0.15); }
+  body.theme-night .settings-btn.active {
+    background: rgba(255,240,220,0.9);
+    color: #1a1625;
+  }
+  .color-picker-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .color-picker-row label { flex: 1; font-size: 12px; min-width: 80px; }
+  .color-picker-row input[type="color"] {
+    width: 36px; height: 28px;
+    border: 2px solid rgba(0,0,0,0.15);
+    border-radius: 6px;
+    cursor: pointer;
+    background: transparent;
+  }
+  body.theme-night .color-picker-row input[type="color"] { border-color: rgba(255,255,255,0.2); }
+  .settings-divider { height: 1px; background: rgba(0,0,0,0.08); margin: 8px 0; }
+  body.theme-night .settings-divider { background: rgba(255,255,255,0.1); }
+  @media (max-width: 480px) {
+    #settings-dropdown { min-width: 260px; }
+    #info { font-size: 12px; bottom: max(24px, env(safe-area-inset-bottom)); }
   }
 </style>
 </head>
 <body class="theme-day">
 
 <div id="canvas-container"></div>
-<button type="button" id="theme-btn" aria-label="Toggle day/night">Night</button>
+<button type="button" id="settings-gear" aria-label="Settings">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </svg>
+</button>
+<div id="settings-dropdown">
+  <div class="settings-section">
+    <div class="settings-label">Theme</div>
+    <div class="settings-row">
+      <button type="button" class="settings-btn theme-opt active" data-theme="day">Day</button>
+      <button type="button" class="settings-btn theme-opt" data-theme="night">Night</button>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Time Format</div>
+    <div class="settings-row">
+      <button type="button" class="settings-btn format-opt active" data-format="24">24-hour</button>
+      <button type="button" class="settings-btn format-opt" data-format="12">12-hour</button>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Day Theme Colors</div>
+    <div class="color-picker-row">
+      <label>Background top</label>
+      <input type="color" id="day-bg-top" value="#f5efe8">
+    </div>
+    <div class="color-picker-row">
+      <label>Background mid</label>
+      <input type="color" id="day-bg-mid" value="#ebe3da">
+    </div>
+    <div class="color-picker-row">
+      <label>Background bottom</label>
+      <input type="color" id="day-bg-bot" value="#e8e0d8">
+    </div>
+    <div class="color-picker-row">
+      <label>Bar color</label>
+      <input type="color" id="day-bar" value="#e0dcd6">
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Night Theme Colors</div>
+    <div class="color-picker-row">
+      <label>Background top</label>
+      <input type="color" id="night-bg-top" value="#1a1625">
+    </div>
+    <div class="color-picker-row">
+      <label>Background mid</label>
+      <input type="color" id="night-bg-mid" value="#0f0d14">
+    </div>
+    <div class="color-picker-row">
+      <label>Background bottom</label>
+      <input type="color" id="night-bg-bot" value="#0a0810">
+    </div>
+    <div class="color-picker-row">
+      <label>Bar color</label>
+      <input type="color" id="night-bar" value="#2a2630">
+    </div>
+  </div>
+</div>
 <p id="info">--:--:--</p>
 
 <script type="importmap">
@@ -130,7 +263,24 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 const container = document.getElementById('canvas-container');
 const timeTextEl = document.getElementById('info');
 
-// Scene – day/night backgrounds
+// Settings – persisted
+const STORAGE_KEY = 'vibeclock-settings';
+const DEFAULT_SETTINGS = {
+  theme: 'day',
+  format24: true,
+  dayBgTop: '#f5efe8', dayBgMid: '#ebe3da', dayBgBot: '#e8e0d8', dayBar: '#e0dcd6',
+  nightBgTop: '#1a1625', nightBgMid: '#0f0d14', nightBgBot: '#0a0810', nightBar: '#2a2630',
+};
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    return { ...DEFAULT_SETTINGS, ...s };
+  } catch { return { ...DEFAULT_SETTINGS }; }
+}
+function saveSettings(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+let settings = loadSettings();
+
+// Scene – day/night backgrounds (uses settings colors)
 function createBgCanvas(day) {
   const c = document.createElement('canvas');
   c.width = 512;
@@ -138,16 +288,22 @@ function createBgCanvas(day) {
   const ctx = c.getContext('2d');
   const g = ctx.createRadialGradient(256, 220, 0, 256, 256, 420);
   if (day) {
-    g.addColorStop(0, '#faf4ee');
-    g.addColorStop(0.35, '#f2ebe2');
-    g.addColorStop(0.65, '#ebe3da');
-    g.addColorStop(1, '#e5ddd4');
+    const top = settings.dayBgTop || '#f5efe8';
+    const mid = settings.dayBgMid || '#ebe3da';
+    const bot = settings.dayBgBot || '#e8e0d8';
+    g.addColorStop(0, top);
+    g.addColorStop(0.35, mid);
+    g.addColorStop(0.65, mid);
+    g.addColorStop(1, bot);
   } else {
-    g.addColorStop(0, '#2e2430');
-    g.addColorStop(0.25, '#251e28');
-    g.addColorStop(0.5, '#1a1625');
-    g.addColorStop(0.8, '#0f0d14');
-    g.addColorStop(1, '#0a0810');
+    const top = settings.nightBgTop || '#1a1625';
+    const mid = settings.nightBgMid || '#0f0d14';
+    const bot = settings.nightBgBot || '#0a0810';
+    g.addColorStop(0, top);
+    g.addColorStop(0.25, mid);
+    g.addColorStop(0.5, mid);
+    g.addColorStop(0.8, mid);
+    g.addColorStop(1, bot);
   }
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 512, 512);
@@ -247,6 +403,33 @@ for (let i = 0; i <= 9; i++) {
   lightDigitTextures.push(createDigitTexture(i, false));
 }
 
+// AM/PM textures (for 12-hour mode)
+function createAmPmTexture(label, dark) {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,0)';
+  ctx.fillRect(0, 0, size, size);
+  if (dark) ctx.fillStyle = 'rgba(80, 70, 65, 0.9)';
+  else {
+    ctx.fillStyle = 'rgba(255, 250, 245, 0.98)';
+    ctx.shadowColor = 'rgba(200, 190, 180, 0.5)';
+    ctx.shadowBlur = 8;
+  }
+  ctx.font = 'bold 48px Outfit, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, size / 2, size / 2);
+  ctx.shadowBlur = 0;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
+const darkAmPmTextures = [createAmPmTexture('AM', true), createAmPmTexture('PM', true)];
+const lightAmPmTextures = [createAmPmTexture('AM', false), createAmPmTexture('PM', false)];
+
 // Block dimensions – thicker bars, one block per column, padding at bottom
 const BLOCK_WIDTH = 0.52;
 const BLOCK_HEIGHT = 0.85;
@@ -255,12 +438,18 @@ const BLOCK_SPACING = BLOCK_HEIGHT + BLOCK_GAP;
 const STRIP_PADDING_BOTTOM = 0.28;
 const STRIP_HEIGHT = 10 * BLOCK_SPACING - BLOCK_GAP + STRIP_PADDING_BOTTOM;
 const BLOCK_DEPTH = 0.32;
-const BLOCK_CORNER_RADIUS = 0.09;
+const BAR_WIDTH = BLOCK_WIDTH * 1.06;
+const CAPSULE_RADIUS = Math.min(BAR_WIDTH, BLOCK_DEPTH) / 2;  // Max safe radius for pill shape
 const COLUMN_SPACING = 1.4;
 const PLANE_W = BLOCK_WIDTH * 0.88;
 const PLANE_H = BLOCK_HEIGHT * 0.72;
 
-// One block per column – recessed panel, more shadow and emission
+// Capsule-like bar – RoundedBox with max corner radius for pill shape
+function createCapsuleBarGeometry() {
+  return new RoundedBoxGeometry(BAR_WIDTH, STRIP_HEIGHT, BLOCK_DEPTH, 6, CAPSULE_RADIUS);
+}
+
+// One block per column – recessed panel; color updated from settings
 const blockMaterial = new THREE.MeshStandardMaterial({
   color: 0xe0dcd6,
   emissive: 0x3d3540,
@@ -270,40 +459,47 @@ const blockMaterial = new THREE.MeshStandardMaterial({
 });
 
 // Create one digit column: one block (strip) that moves; circle fixed in place
-function createDigitColumn(index) {
+function createDigitColumn(index, totalColumns, isAmPm = false) {
   const group = new THREE.Group();
   group.userData.targetStripY = 0;
+  group.userData.isAmPm = isAmPm;
 
   const planeGeom = new THREE.PlaneGeometry(PLANE_W, PLANE_H);
+  const digitTextures = isAmPm ? [darkAmPmTextures[0], darkAmPmTextures[1]] : darkDigitTextures;
+  const lightTextures = isAmPm ? [lightAmPmTextures[0], lightAmPmTextures[1]] : lightDigitTextures;
 
-  // Strip group – block + digits move together so current digit aligns with fixed circle
+  // Strip group – block + digits move together
   const stripGroup = new THREE.Group();
   stripGroup.position.y = 0;
 
-  // Single block – rounded top and bottom ends (pill-like bar)
-  const blockGeom = new RoundedBoxGeometry(BLOCK_WIDTH * 1.06, STRIP_HEIGHT, BLOCK_DEPTH, 4, BLOCK_CORNER_RADIUS);
-  const block = new THREE.Mesh(blockGeom, blockMaterial);
+  // Capsule-shaped bar (pill with fully rounded ends)
+  const blockGeom = createCapsuleBarGeometry();
+  const blockMat = blockMaterial.clone();
+  const block = new THREE.Mesh(blockGeom, blockMat);
   block.position.y = STRIP_HEIGHT / 2;
   block.castShadow = true;
   block.receiveShadow = true;
   stripGroup.add(block);
+  group.userData.blockMat = blockMat;
 
-  // Numbers 0–9 stacked inside the block, 0 at top and 9 at bottom; extra padding at bottom
-  for (let d = 0; d <= 9; d++) {
+  const numDigits = isAmPm ? 2 : 10;
+  const maxD = numDigits - 1;
+  // Numbers stacked inside the block, 0 at top and max at bottom
+  for (let d = 0; d < numDigits; d++) {
     const planeMat = new THREE.MeshBasicMaterial({
-      map: darkDigitTextures[d],
+      map: digitTextures[d],
       transparent: true,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
     const plane = new THREE.Mesh(planeGeom, planeMat);
-    plane.position.set(0, STRIP_PADDING_BOTTOM + (9 - d) * BLOCK_SPACING, BLOCK_DEPTH / 2 + 0.01);
+    plane.position.set(0, STRIP_PADDING_BOTTOM + (maxD - d) * BLOCK_SPACING, BLOCK_DEPTH / 2 + 0.01);
     stripGroup.add(plane);
   }
 
   // Highlight digit (light) inside the circle – slightly scaled to suggest magnification
   const highlightMat = new THREE.MeshBasicMaterial({
-    map: lightDigitTextures[0],
+    map: lightTextures[0],
     transparent: true,
     side: THREE.DoubleSide,
     depthWrite: false,
@@ -352,25 +548,26 @@ function createDigitColumn(index) {
   glassDisc.position.set(0, 0, BLOCK_DEPTH / 2 + 0.035);
   group.add(glassDisc);
 
-  // Position column along X: 6 columns (HH : MM : SS)
-  group.position.x = (index - 2.5) * COLUMN_SPACING;
+  const centerOffset = (totalColumns - 1) / 2;
+  group.position.x = (index - centerOffset) * COLUMN_SPACING;
   group.position.y = 0;
   group.position.z = 0;
 
   return group;
 }
 
-// Create colons – soft heavenly dots (add to parent)
-function createColons(parent) {
+// Create colons – soft heavenly dots; x positions depend on column count
+function createColons(parent, use24) {
   const geom = new THREE.SphereGeometry(0.1, 20, 20);
   const mat = new THREE.MeshBasicMaterial({
     color: 0xfff0e0,
     transparent: true,
     opacity: 0.7,
   });
-  const colonX = [-1.4, 1.4];
+  const colonX = use24 ? [-1.4, 1.4] : [-2.1, 0.7];  // Between HH:MM and MM:SS
   colonX.forEach((x) => {
     const group = new THREE.Group();
+    group.userData.isColon = true;
     group.position.x = x;
     const c1 = new THREE.Mesh(geom, mat.clone());
     c1.position.set(0, 0.25, 0);
@@ -389,24 +586,56 @@ clockGroup.rotation.y = 0.35;   // turn slightly to the side
 clockGroup.scale.setScalar(0.72);  // keep full clock on screen with margin
 scene.add(clockGroup);
 
-// Build clock: 6 columns
-const digitGroups = [];
-for (let i = 0; i < 6; i++) {
-  const col = createDigitColumn(i);
-  clockGroup.add(col);
-  digitGroups.push(col);
-}
-createColons(clockGroup);
+// Build clock – columns built dynamically based on format
+let digitGroups = [];
+let amPmColumn = null;
 
-// Current digits (HH MM SS)
+function buildClock() {
+  digitGroups = [];
+  amPmColumn = null;
+  const use24 = settings.format24 !== false;
+  const totalCols = use24 ? 6 : 7;
+
+  // Remove existing digit columns and colons
+  const toRemove = clockGroup.children.filter(c => 
+    (c.userData && c.userData.isDigitColumn) || (c.userData && c.userData.isColon)
+  );
+  toRemove.forEach(c => clockGroup.remove(c));
+
+  for (let i = 0; i < totalCols; i++) {
+    const isAmPm = !use24 && i === 6;
+    const col = createDigitColumn(i, totalCols, isAmPm);
+    col.userData.isDigitColumn = true;
+    clockGroup.add(col);
+    digitGroups.push(col);
+    if (isAmPm) amPmColumn = col;
+  }
+  createColons(clockGroup, use24);
+}
+
+// Initial build
+buildClock();
+
 let currentDigits = [0, 0, 0, 0, 0, 0];
 const lerpSpeed = 0.12;
 
 function getTimeDigits() {
   const now = new Date();
-  const h = now.getHours();
+  let h = now.getHours();
   const m = now.getMinutes();
   const s = now.getSeconds();
+  const use24 = settings.format24 !== false;
+
+  if (!use24) {
+    const ampm = h >= 12 ? 1 : 0;
+    h = h % 12 || 12;
+    return [
+      Math.floor(h / 10), h % 10,
+      Math.floor(m / 10), m % 10,
+      Math.floor(s / 10), s % 10,
+      ampm,
+    ];
+  }
   return [
     Math.floor(h / 10), h % 10,
     Math.floor(m / 10), m % 10,
@@ -414,14 +643,34 @@ function getTimeDigits() {
   ];
 }
 
+function getTimeDisplayString() {
+  const now = new Date();
+  if (settings.format24 !== false) {
+    return now.toTimeString().slice(0, 8);
+  }
+  const h = now.getHours();
+  const m = now.getMinutes();
+  const s = now.getSeconds();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${String(h12).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} ${ampm}`;
+}
+
 function updateTime() {
   const digits = getTimeDigits();
-  timeTextEl.textContent = new Date().toTimeString().slice(0, 8);
+  timeTextEl.textContent = getTimeDisplayString();
+
+  const use24 = settings.format24 !== false;
+  const maxD = use24 ? 9 : 1;  // For AM/PM column, max digit is 1
+
   digits.forEach((d, i) => {
     const col = digitGroups[i];
-    col.userData.targetStripY = -STRIP_PADDING_BOTTOM + (d - 9) * BLOCK_SPACING;
-    col.userData.highlightPlane.position.y = STRIP_PADDING_BOTTOM + (9 - d) * BLOCK_SPACING;
-    col.userData.highlightPlaneMat.map = lightDigitTextures[d];
+    if (!col) return;
+    const colMaxD = col.userData.isAmPm ? 1 : 9;
+    col.userData.targetStripY = -STRIP_PADDING_BOTTOM + (d - colMaxD) * BLOCK_SPACING;
+    col.userData.highlightPlane.position.y = STRIP_PADDING_BOTTOM + (colMaxD - d) * BLOCK_SPACING;
+    const texArr = col.userData.isAmPm ? lightAmPmTextures : lightDigitTextures;
+    col.userData.highlightPlaneMat.map = texArr[d];
   });
   currentDigits = digits;
 }
@@ -452,20 +701,35 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Day / Night theme – current theme is day
+// Day / Night theme – uses settings
 let isDay = true;
-const themeBtn = document.getElementById('theme-btn');
 
 function applyTheme(day) {
   isDay = day;
+  settings.theme = day ? 'day' : 'night';
   document.body.className = day ? 'theme-day' : 'theme-night';
-  themeBtn.textContent = day ? 'Night' : 'Day';
+
+  // Body gradient from settings
+  const top = day ? (settings.dayBgTop || '#f5efe8') : (settings.nightBgTop || '#1a1625');
+  const mid = day ? (settings.dayBgMid || '#ebe3da') : (settings.nightBgMid || '#0f0d14');
+  const bot = day ? (settings.dayBgBot || '#e8e0d8') : (settings.nightBgBot || '#0a0810');
+  document.body.style.setProperty('--bg-top', top);
+  document.body.style.setProperty('--bg-mid', mid);
+  document.body.style.setProperty('--bg-bot', bot);
+
   scene.background = createBgCanvas(day);
   scene.fog = new THREE.FogExp2(day ? 0xe8e0d8 : 0x120f18, day ? 0.022 : 0.032);
-  blockMaterial.emissive.setHex(day ? 0x3d3540 : 0x1a1520);
-  blockMaterial.emissiveIntensity = day ? 0.22 : 0.35;
-  blockMaterial.color.setHex(day ? 0xe0dcd6 : 0x2a2630);
-  // Day: soft diffuse; Night: street lamp above – warm amber, cozy
+
+  const barColor = day ? (settings.dayBar || '#e0dcd6') : (settings.nightBar || '#2a2630');
+  const barHex = parseInt(barColor.slice(1), 16);
+  digitGroups.forEach((col) => {
+    if (col.userData.blockMat) {
+      col.userData.blockMat.color.setHex(barHex);
+      col.userData.blockMat.emissive.setHex(day ? 0x3d3540 : 0x1a1520);
+      col.userData.blockMat.emissiveIntensity = day ? 0.22 : 0.35;
+    }
+  });
+
   if (day) {
     ambient.color.setHex(0xffeedd);
     ambient.intensity = 0.45;
@@ -489,12 +753,85 @@ function applyTheme(day) {
   }
 }
 
-themeBtn.addEventListener('click', () => {
-  isDay = !isDay;
-  applyTheme(isDay);
+// Settings UI
+const settingsGear = document.getElementById('settings-gear');
+const settingsDropdown = document.getElementById('settings-dropdown');
+
+function syncColorPickers() {
+  document.getElementById('day-bg-top').value = settings.dayBgTop || '#f5efe8';
+  document.getElementById('day-bg-mid').value = settings.dayBgMid || '#ebe3da';
+  document.getElementById('day-bg-bot').value = settings.dayBgBot || '#e8e0d8';
+  document.getElementById('day-bar').value = settings.dayBar || '#e0dcd6';
+  document.getElementById('night-bg-top').value = settings.nightBgTop || '#1a1625';
+  document.getElementById('night-bg-mid').value = settings.nightBgMid || '#0f0d14';
+  document.getElementById('night-bg-bot').value = settings.nightBgBot || '#0a0810';
+  document.getElementById('night-bar').value = settings.nightBar || '#2a2630';
+}
+
+function updateThemeButtons() {
+  document.querySelectorAll('.theme-opt').forEach((b) => {
+    b.classList.toggle('active', b.dataset.theme === settings.theme);
+  });
+}
+
+function updateFormatButtons() {
+  document.querySelectorAll('.format-opt').forEach((b) => {
+    b.classList.toggle('active', (b.dataset.format === '12') === !settings.format24);
+  });
+}
+
+settingsGear.addEventListener('click', (e) => {
+  e.stopPropagation();
+  settingsDropdown.classList.toggle('open');
+  if (settingsDropdown.classList.contains('open')) {
+    syncColorPickers();
+    updateThemeButtons();
+    updateFormatButtons();
+  }
 });
 
-applyTheme(true);
+document.addEventListener('click', () => settingsDropdown.classList.remove('open'));
+settingsDropdown.addEventListener('click', (e) => e.stopPropagation());
+
+document.querySelectorAll('.theme-opt').forEach((b) => {
+  b.addEventListener('click', () => {
+    settings.theme = b.dataset.theme;
+    isDay = settings.theme === 'day';
+    applyTheme(isDay);
+    saveSettings(settings);
+    updateThemeButtons();
+  });
+});
+
+document.querySelectorAll('.format-opt').forEach((b) => {
+  b.addEventListener('click', () => {
+    settings.format24 = b.dataset.format === '24';
+    saveSettings(settings);
+    buildClock();
+    applyTheme(isDay);  // Re-apply bar colors to new columns
+    updateTime();
+    updateFormatButtons();
+  });
+});
+
+['day-bg-top','day-bg-mid','day-bg-bot','day-bar','night-bg-top','night-bg-mid','night-bg-bot','night-bar'].forEach((id) => {
+  const el = document.getElementById(id);
+  const key = id.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+  el.addEventListener('input', () => {
+    settings[key] = el.value;
+    saveSettings(settings);
+    if (key.startsWith('day') && isDay) applyTheme(true);
+    if (key.startsWith('night') && !isDay) applyTheme(false);
+  });
+});
+
+// Init from saved settings
+isDay = settings.theme === 'day';
+applyTheme(isDay);
+if (!settings.format24) {
+  buildClock();
+  updateTime();
+}
 </script>
 
 </body>
