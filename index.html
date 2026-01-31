@@ -339,6 +339,34 @@
       <button type="button" class="settings-btn colon-tick-opt" data-tick="true">Tick</button>
     </div>
   </div>
+  <div class="settings-section">
+    <div class="settings-label">Rim Light</div>
+    <div class="color-picker-row">
+      <label>Color</label>
+      <input type="color" id="rim-light-color" value="#ffe4c4">
+    </div>
+    <div class="color-picker-row">
+      <label>Intensity</label>
+      <input type="range" id="rim-light-intensity" min="0" max="1" step="0.05" value="0.2" style="flex:1">
+      <span id="rim-light-val">0.2</span>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Spotlight</div>
+    <div class="settings-row">
+      <button type="button" class="settings-btn spotlight-opt" data-enabled="false">Off</button>
+      <button type="button" class="settings-btn spotlight-opt" data-enabled="true">On</button>
+    </div>
+    <div class="color-picker-row">
+      <label>Color</label>
+      <input type="color" id="spotlight-color" value="#fff5e8">
+    </div>
+    <div class="color-picker-row">
+      <label>Intensity</label>
+      <input type="range" id="spotlight-intensity" min="0" max="2" step="0.1" value="1" style="flex:1">
+      <span id="spotlight-val">1</span>
+    </div>
+  </div>
 </div>
 <div id="clock-text-container">
   <p id="info">--:--:--</p>
@@ -372,6 +400,11 @@ const DEFAULT_SETTINGS = {
   textSizeMain: 'normal',
   textSizeAlt: 'small',
   colonTick: false,
+  rimLightColor: '#ffe4c4',
+  rimLightIntensity: 0.2,
+  spotlightEnabled: false,
+  spotlightColor: '#fff5e8',
+  spotlightIntensity: 1,
 };
 function loadSettings() {
   try {
@@ -470,6 +503,13 @@ scene.add(fill);
 const rim = new THREE.DirectionalLight(0xffe4c4, 0.2);
 rim.position.set(2, 6, -2);
 scene.add(rim);
+const spotlight = new THREE.SpotLight(0xfff5e8, 1, 30, Math.PI / 6, 0.3);
+spotlight.position.set(0, 15, 8);
+spotlight.target.position.set(0, 0, 0);
+spotlight.castShadow = true;
+spotlight.visible = false;
+scene.add(spotlight);
+scene.add(spotlight.target);
 
 // Digit textures: dark (strip) and light (inside circle) – reference vision.png
 const darkDigitTextures = [];
@@ -502,6 +542,34 @@ for (let i = 0; i <= 9; i++) {
   darkDigitTextures.push(createDigitTexture(i, true));
   lightDigitTextures.push(createDigitTexture(i, false));
 }
+
+// Arabic numeral textures (٠١٢٣٤٥٦٧٨٩) for backside view
+const ARABIC_DIGITS = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+function createDigitTextureArabic(digit, dark) {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,0)';
+  ctx.fillRect(0, 0, size, size);
+  if (dark) ctx.fillStyle = 'rgba(80, 70, 65, 0.9)';
+  else {
+    ctx.fillStyle = 'rgba(255, 250, 245, 0.98)';
+    ctx.shadowColor = 'rgba(200, 190, 180, 0.5)';
+    ctx.shadowBlur = 8;
+  }
+  ctx.font = 'bold 90px Outfit, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(ARABIC_DIGITS[digit], size / 2, size / 2);
+  ctx.shadowBlur = 0;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
+const darkArabicTextures = ARABIC_DIGITS.map((_, i) => createDigitTextureArabic(i, true));
+const lightArabicTextures = ARABIC_DIGITS.map((_, i) => createDigitTextureArabic(i, false));
 
 // AM/PM textures (for 12-hour mode) – larger text
 function createAmPmTexture(label, dark) {
@@ -555,9 +623,9 @@ function getColumnConfig(columnType, use24) {
   return { numDigits: 10, digitIndices: null, isAmPm: false };
 }
 
-function createCapsuleBarGeometry(height) {
-  const r = Math.min(CAPSULE_RADIUS, height / 4);
-  return new RoundedBoxGeometry(BAR_WIDTH, height, BLOCK_DEPTH, 6, r);
+function createCapsuleBarGeometry(height, width = BAR_WIDTH) {
+  const r = Math.min(Math.min(width, BLOCK_DEPTH) / 2, height / 4);
+  return new RoundedBoxGeometry(width, height, BLOCK_DEPTH, 6, r);
 }
 
 // One block per column – recessed panel; color updated from settings
@@ -580,18 +648,23 @@ function createDigitColumn(index, totalColumns, columnType, use24) {
   group.userData.targetStripY = 0;
   group.userData.isAmPm = isAmPm;
   group.userData.maxD = maxD;
+  group.userData.columnType = columnType;
+  group.userData.numDigits = numDigits;
+  group.userData.digitIndices = digitIndices;
 
   const planeGeom = new THREE.PlaneGeometry(PLANE_W, PLANE_H);
-  const getTex = (d, dark) => {
+  const getTex = (d, dark, useArabic) => {
     if (isAmPm) return (dark ? darkAmPmTextures : lightAmPmTextures)[d];
     const idx = digitIndices ? digitIndices[d] : d;
+    if (useArabic) return (dark ? darkArabicTextures : lightArabicTextures)[idx];
     return (dark ? darkDigitTextures : lightDigitTextures)[idx];
   };
 
   const stripGroup = new THREE.Group();
   stripGroup.position.y = 0;
 
-  const blockGeom = createCapsuleBarGeometry(stripHeight);
+  const barWidth = isAmPm ? BAR_WIDTH * 1.4 : BAR_WIDTH;
+  const blockGeom = createCapsuleBarGeometry(stripHeight, barWidth);
   const blockMat = blockMaterial.clone();
   const block = new THREE.Mesh(blockGeom, blockMat);
   block.position.y = stripHeight / 2;
@@ -600,9 +673,10 @@ function createDigitColumn(index, totalColumns, columnType, use24) {
   stripGroup.add(block);
   group.userData.blockMat = blockMat;
 
+  const stripPlaneMats = [];
   for (let d = 0; d < numDigits; d++) {
     const planeMat = new THREE.MeshBasicMaterial({
-      map: getTex(d, true),
+      map: getTex(d, true, false),
       transparent: true,
       side: THREE.DoubleSide,
       depthWrite: false,
@@ -610,17 +684,20 @@ function createDigitColumn(index, totalColumns, columnType, use24) {
     const plane = new THREE.Mesh(planeGeom, planeMat);
     plane.position.set(0, STRIP_PADDING_BOTTOM + (maxD - d) * BLOCK_SPACING, BLOCK_DEPTH / 2 + 0.01);
     stripGroup.add(plane);
+    stripPlaneMats.push(planeMat);
   }
+  group.userData.stripPlaneMats = stripPlaneMats;
 
+  const circleRadius = isAmPm ? PLANE_W * 0.95 : PLANE_W * 0.58;
   const highlightMat = new THREE.MeshBasicMaterial({
-    map: getTex(0, false),
+    map: getTex(0, false, false),
     transparent: true,
     side: THREE.DoubleSide,
     depthWrite: false,
   });
   const highlightPlane = new THREE.Mesh(planeGeom, highlightMat);
   highlightPlane.position.z = BLOCK_DEPTH / 2 + 0.06;
-  highlightPlane.scale.setScalar(isAmPm ? 1.35 : 1.18);
+  highlightPlane.scale.setScalar(isAmPm ? 1.5 : 1.18);
   stripGroup.add(highlightPlane);
   group.userData.highlightPlane = highlightPlane;
   group.userData.highlightPlaneMat = highlightMat;
@@ -629,8 +706,7 @@ function createDigitColumn(index, totalColumns, columnType, use24) {
   group.add(stripGroup);
   group.userData.stripGroup = stripGroup;
 
-  const circleRadius = PLANE_W * 0.58;
-  const ringGeom = new THREE.TorusGeometry(circleRadius, 0.055, 24, 48);
+  const ringGeom = new THREE.TorusGeometry(circleRadius, isAmPm ? 0.07 : 0.055, 24, 48);
   const ringMat = new THREE.MeshPhysicalMaterial({
     color: 0xffffff,
     transparent: true,
@@ -651,10 +727,10 @@ function createDigitColumn(index, totalColumns, columnType, use24) {
     transparent: true,
     opacity: 0.75,
     transmission: 0.9,
-    thickness: 0.08,
+    thickness: isAmPm ? 0.05 : 0.08,
     roughness: 0.04,
     metalness: 0,
-    ior: 1.5,
+    ior: isAmPm ? 1.35 : 1.5,
     side: THREE.DoubleSide,
     depthWrite: false,
   });
@@ -667,7 +743,7 @@ function createDigitColumn(index, totalColumns, columnType, use24) {
   group.position.y = 0;
   group.position.z = 0;
 
-  if (isAmPm) group.scale.setScalar(0.5);
+  if (isAmPm) group.scale.setScalar(0.72);
 
   return group;
 }
@@ -737,6 +813,7 @@ function buildClock() {
 buildClock();
 
 let currentDigits = [0, 0, 0, 0, 0, 0];
+let isBackView = false;
 const lerpSpeed = 0.12;
 
 function getTimeDigits() {
@@ -783,15 +860,21 @@ function getTimeStringInTimezone(tz) {
   } catch { return '--:--:--'; }
 }
 
+function toArabicNumeralStr(s) {
+  return s.replace(/\d/g, (d) => ARABIC_DIGITS[parseInt(d, 10)]);
+}
+
 function updateTime() {
   const digits = getTimeDigits();
-  timeTextEl.textContent = getTimeDisplayString();
+  const disp = getTimeDisplayString();
+  timeTextEl.textContent = isBackView ? toArabicNumeralStr(disp.replace(/\s*(AM|PM)$/i, ' $1')) : disp;
 
   const altTz = settings.altTimezone || '';
   const infoAlt = document.getElementById('info-alt');
   if (altTz) {
     infoAlt.classList.remove('hidden');
-    infoAlt.textContent = getTimeStringInTimezone(altTz) + ' ' + altTz.split('/').pop();
+    const altStr = getTimeStringInTimezone(altTz) + ' ' + altTz.split('/').pop();
+    infoAlt.textContent = isBackView ? toArabicNumeralStr(altStr) : altStr;
   } else {
     infoAlt.classList.add('hidden');
   }
@@ -805,27 +888,50 @@ function updateTime() {
     const colMaxD = col.userData.maxD;
     col.userData.targetStripY = -STRIP_PADDING_BOTTOM + (d - colMaxD) * BLOCK_SPACING;
     col.userData.highlightPlane.position.y = STRIP_PADDING_BOTTOM + (colMaxD - d) * BLOCK_SPACING;
-    col.userData.highlightPlaneMat.map = col.userData.getTex(d, false);
+    col.userData.currentDigit = d;
+    col.userData.highlightPlaneMat.map = col.userData.getTex(d, false, isBackView && !col.userData.isAmPm);
+    if (col.userData.stripPlaneMats && !col.userData.isAmPm) {
+      col.userData.stripPlaneMats.forEach((m, idx) => {
+        m.map = col.userData.getTex(idx, true, isBackView);
+      });
+    }
   });
   currentDigits = digits;
 }
 
-// Animation loop – move strip, colon tick, update controls
+// Animation loop – move strip, colon tick, Arabic numerals on back, update controls
 function animate() {
   requestAnimationFrame(animate);
   const t = lerpSpeed;
+  isBackView = camera.position.z < -0.5;
   digitGroups.forEach((group) => {
     const strip = group.userData.stripGroup;
     const target = group.userData.targetStripY;
     if (strip) strip.position.y += (target - strip.position.y) * t;
+    const useArabic = isBackView && !group.userData.isAmPm;
+    const d = group.userData.currentDigit ?? 0;
+    if (group.userData.highlightPlaneMat) {
+      group.userData.highlightPlaneMat.map = group.userData.getTex(d, false, useArabic);
+    }
+    if (group.userData.stripPlaneMats && !group.userData.isAmPm) {
+      group.userData.stripPlaneMats.forEach((m, idx) => {
+        m.map = group.userData.getTex(idx, true, useArabic);
+      });
+    }
   });
   if (colonGroups.length) {
     if (settings.colonTick) {
       const secProgress = (Date.now() % 1000) / 1000;
-      const flash = secProgress < 0.15 ? 1 : 0.4;
-      colonGroups.forEach((g) => (g.userData.mats || []).forEach((m) => { m.opacity = flash; }));
+      const visible = secProgress < 0.15;
+      colonGroups.forEach((g) => {
+        g.visible = visible;
+        (g.userData.mats || []).forEach((m) => { m.opacity = 0.7; });
+      });
     } else {
-      colonGroups.forEach((g) => (g.userData.mats || []).forEach((m) => { m.opacity = 0.7; }));
+      colonGroups.forEach((g) => {
+        g.visible = true;
+        (g.userData.mats || []).forEach((m) => { m.opacity = 0.7; });
+      });
     }
   }
   controls.target.x = Math.max(-PAN_LIMIT_X, Math.min(PAN_LIMIT_X, controls.target.x));
@@ -895,6 +1001,23 @@ function applyTheme(day) {
     rim.color.setHex(0xff8844);
     rim.intensity = 0.08;
   }
+  applyLightSettings();
+}
+
+function applyLightSettings() {
+  const rimColor = settings.rimLightColor || '#ffe4c4';
+  const rimInt = parseFloat(settings.rimLightIntensity);
+  rim.color.setHex(parseInt(rimColor.slice(1), 16));
+  rim.intensity = isNaN(rimInt) ? 0.2 : rimInt;
+
+  const spotOn = !!settings.spotlightEnabled;
+  spotlight.visible = spotOn;
+  if (spotOn) {
+    const spotColor = settings.spotlightColor || '#fff5e8';
+    const spotInt = parseFloat(settings.spotlightIntensity);
+    spotlight.color.setHex(parseInt(spotColor.slice(1), 16));
+    spotlight.intensity = isNaN(spotInt) ? 1 : spotInt;
+  }
 }
 
 // Settings UI
@@ -942,12 +1065,23 @@ function syncSettingsDropdown() {
   updateThemeButtons();
   updateFormatButtons();
   updateColonTickButtons();
+  document.querySelectorAll('.spotlight-opt').forEach((b) => {
+    b.classList.toggle('active', (b.dataset.enabled === 'true') === !!settings.spotlightEnabled);
+  });
   const altSel = document.getElementById('alt-timezone');
   const mainSel = document.getElementById('text-size-main');
   const altSizeSel = document.getElementById('text-size-alt');
   if (altSel) altSel.value = settings.altTimezone || '';
   if (mainSel) mainSel.value = settings.textSizeMain || 'normal';
   if (altSizeSel) altSizeSel.value = settings.textSizeAlt || 'small';
+  const rc = document.getElementById('rim-light-color');
+  const ri = document.getElementById('rim-light-intensity');
+  const sc = document.getElementById('spotlight-color');
+  const si = document.getElementById('spotlight-intensity');
+  if (rc) rc.value = settings.rimLightColor || '#ffe4c4';
+  if (ri) { ri.value = settings.rimLightIntensity ?? 0.2; document.getElementById('rim-light-val').textContent = ri.value; }
+  if (sc) sc.value = settings.spotlightColor || '#fff5e8';
+  if (si) { si.value = settings.spotlightIntensity ?? 1; document.getElementById('spotlight-val').textContent = si.value; }
 }
 
 settingsGear.addEventListener('click', (e) => {
@@ -1028,6 +1162,38 @@ document.querySelectorAll('.colon-tick-opt').forEach((b) => {
     saveSettings(settings);
     updateColonTickButtons();
   });
+});
+
+document.querySelectorAll('.spotlight-opt').forEach((b) => {
+  b.addEventListener('click', () => {
+    settings.spotlightEnabled = b.dataset.enabled === 'true';
+    saveSettings(settings);
+    applyLightSettings();
+    document.querySelectorAll('.spotlight-opt').forEach((x) => x.classList.toggle('active', (x.dataset.enabled === 'true') === !!settings.spotlightEnabled));
+  });
+});
+
+document.getElementById('rim-light-color')?.addEventListener('input', (e) => {
+  settings.rimLightColor = e.target.value;
+  saveSettings(settings);
+  applyLightSettings();
+});
+document.getElementById('rim-light-intensity')?.addEventListener('input', (e) => {
+  settings.rimLightIntensity = parseFloat(e.target.value);
+  document.getElementById('rim-light-val').textContent = e.target.value;
+  saveSettings(settings);
+  applyLightSettings();
+});
+document.getElementById('spotlight-color')?.addEventListener('input', (e) => {
+  settings.spotlightColor = e.target.value;
+  saveSettings(settings);
+  applyLightSettings();
+});
+document.getElementById('spotlight-intensity')?.addEventListener('input', (e) => {
+  settings.spotlightIntensity = parseFloat(e.target.value);
+  document.getElementById('spotlight-val').textContent = e.target.value;
+  saveSettings(settings);
+  applyLightSettings();
 });
 
 // Init from saved settings
