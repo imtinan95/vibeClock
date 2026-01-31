@@ -35,18 +35,28 @@
     display: block;
     touch-action: none;
   }
-  #info {
+  #clock-text-container {
     position: fixed;
     bottom: max(28px, env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
-    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.4s ease, text-shadow 0.4s ease;
+  }
+  #info, #info-alt {
     font-weight: 600;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    transition: color 0.4s ease, text-shadow 0.4s ease;
+    transition: color 0.4s ease, text-shadow 0.4s ease, font-size 0.3s ease;
   }
-  body.theme-day #info {
+  #info { font-size: 11px; }
+  #info-alt { font-size: 10px; opacity: 0.85; }
+  #info-alt.hidden { display: none !important; }
+  body.theme-day #info,
+  body.theme-day #info-alt {
     color: #3d3228;
     text-shadow:
       0 0 20px rgba(255, 240, 220, 0.7),
@@ -54,7 +64,8 @@
       0 2px 4px rgba(0, 0, 0, 0.15),
       0 1px 2px rgba(255, 255, 255, 0.6);
   }
-  body.theme-night #info {
+  body.theme-night #info,
+  body.theme-night #info-alt {
     color: #f0e8e0;
     text-shadow:
       0 0 24px rgba(255, 240, 220, 0.5),
@@ -174,11 +185,33 @@
     background: transparent;
   }
   body.theme-night .color-picker-row input[type="color"] { border-color: rgba(255,255,255,0.2); }
+  .settings-select {
+    flex: 1;
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 12px;
+    border-radius: 8px;
+    border: 2px solid rgba(0,0,0,0.15);
+    background: rgba(255,255,255,0.9);
+    cursor: pointer;
+  }
+  body.theme-night .settings-select {
+    border-color: rgba(255,255,255,0.2);
+    background: rgba(40,36,50,0.9);
+    color: #f0e8e0;
+  }
   .settings-divider { height: 1px; background: rgba(0,0,0,0.08); margin: 8px 0; }
   body.theme-night .settings-divider { background: rgba(255,255,255,0.1); }
+  .text-size-small { font-size: 9px !important; }
+  .text-size-medium { font-size: 11px !important; }
+  .text-size-large { font-size: 14px !important; }
+  #info-alt.text-size-small { font-size: 8px !important; }
+  #info-alt.text-size-medium { font-size: 10px !important; }
+  #info-alt.text-size-large { font-size: 12px !important; }
   @media (max-width: 480px) {
     #settings-dropdown { min-width: 260px; }
-    #info { font-size: 12px; bottom: max(24px, env(safe-area-inset-bottom)); }
+    #info { font-size: 12px; }
+    #clock-text-container { bottom: max(24px, env(safe-area-inset-bottom)); }
   }
 </style>
 </head>
@@ -204,6 +237,9 @@
     <div class="settings-row">
       <button type="button" class="settings-btn format-opt active" data-format="24">24-hour</button>
       <button type="button" class="settings-btn format-opt" data-format="12">12-hour</button>
+    </div>
+    <div class="settings-row" style="margin-top:8px">
+      <button type="button" class="settings-btn" id="reset-theme-btn" style="flex:1 1 100%">Reset Theme to Default</button>
     </div>
   </div>
   <div class="settings-section">
@@ -244,8 +280,47 @@
       <input type="color" id="night-bar" value="#2a2630">
     </div>
   </div>
+  <div class="settings-section">
+    <div class="settings-label">Alternate Timezone</div>
+    <div class="settings-row">
+      <select id="alt-timezone" class="settings-select">
+        <option value="">Off</option>
+        <option value="America/New_York">New York</option>
+        <option value="America/Los_Angeles">Los Angeles</option>
+        <option value="America/Chicago">Chicago</option>
+        <option value="Europe/London">London</option>
+        <option value="Europe/Paris">Paris</option>
+        <option value="Asia/Tokyo">Tokyo</option>
+        <option value="Asia/Shanghai">Shanghai</option>
+        <option value="Australia/Sydney">Sydney</option>
+        <option value="UTC">UTC</option>
+      </select>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Text Clock Size</div>
+    <div class="color-picker-row">
+      <label>Main clock</label>
+      <select id="text-size-main" class="settings-select">
+        <option value="small">Small</option>
+        <option value="medium" selected>Medium</option>
+        <option value="large">Large</option>
+      </select>
+    </div>
+    <div class="color-picker-row">
+      <label>Alternate clock</label>
+      <select id="text-size-alt" class="settings-select">
+        <option value="small" selected>Small</option>
+        <option value="medium">Medium</option>
+        <option value="large">Large</option>
+      </select>
+    </div>
+  </div>
 </div>
-<p id="info">--:--:--</p>
+<div id="clock-text-container">
+  <p id="info">--:--:--</p>
+  <p id="info-alt" class="hidden" aria-hidden="true">--:--:--</p>
+</div>
 
 <script type="importmap">
 {
@@ -270,6 +345,9 @@ const DEFAULT_SETTINGS = {
   format24: true,
   dayBgTop: '#f5efe8', dayBgMid: '#ebe3da', dayBgBot: '#e8e0d8', dayBar: '#e0dcd6',
   nightBgTop: '#1a1625', nightBgMid: '#0f0d14', nightBgBot: '#0a0810', nightBar: '#2a2630',
+  altTimezone: '',
+  textSizeMain: 'medium',
+  textSizeAlt: 'small',
 };
 function loadSettings() {
   try {
@@ -313,9 +391,9 @@ const scene = new THREE.Scene();
 scene.background = createBgCanvas(true);
 scene.fog = new THREE.FogExp2(0xe8e0d8, 0.022);
 
-// Camera – looking from above, zoomed out
+// Camera – front view (straight on)
 const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 22, 8);
+camera.position.set(0, 0, 12);
 camera.lookAt(0, 0, 0);
 
 // Mobile detection for lighter shadows
@@ -331,22 +409,39 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 if (isMobile) renderer.domElement.style.touchAction = 'none';
 container.appendChild(renderer.domElement);
 
-// Zoom and pan controls – camera stays in front of clock, limited pan
+// Controls – zoom/pan by default; rotate only with CTRL+Right Click
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0, 0);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 controls.minDistance = 8;
 controls.maxDistance = 45;
-controls.maxPolarAngle = Math.PI * 0.52;
-controls.minPolarAngle = 0.2;
-controls.maxAzimuthAngle = 0.48;
-controls.minAzimuthAngle = -0.48;
 controls.enablePan = true;
 controls.panSpeed = 0.8;
 controls.zoomSpeed = 1.2;
+controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: null };
+controls.enableRotate = false;
 const PAN_LIMIT_X = 3.5;
 const PAN_LIMIT_Y = 2.5;
+
+// CTRL+Right Click to rotate – enable only when both held
+renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+renderer.domElement.addEventListener('mousedown', (e) => {
+  if (e.button === 2) {
+    controls.enableRotate = e.ctrlKey;
+    controls.mouseButtons.RIGHT = e.ctrlKey ? THREE.MOUSE.ROTATE : null;
+  }
+});
+renderer.domElement.addEventListener('mouseup', (e) => {
+  if (e.button === 2) {
+    controls.enableRotate = false;
+    controls.mouseButtons.RIGHT = null;
+  }
+});
+renderer.domElement.addEventListener('mouseleave', () => {
+  controls.enableRotate = false;
+  controls.mouseButtons.RIGHT = null;
+});
 
 // Lights – day: soft heavenly; night: street lamp above, cozy
 const ambient = new THREE.AmbientLight(0xffeedd, 0.45);
@@ -553,6 +648,8 @@ function createDigitColumn(index, totalColumns, isAmPm = false) {
   group.position.y = 0;
   group.position.z = 0;
 
+  if (isAmPm) group.scale.setScalar(0.55);  // Smaller AM/PM bar
+
   return group;
 }
 
@@ -579,11 +676,10 @@ function createColons(parent, use24) {
   });
 }
 
-// Clock at an angle – tilted so we see it from above, scaled to fit on screen
+// Clock – front view (facing camera)
 const clockGroup = new THREE.Group();
-clockGroup.rotation.x = -0.6;   // tilt back so face is visible from above
-clockGroup.rotation.y = 0.35;   // turn slightly to the side
-clockGroup.scale.setScalar(0.72);  // keep full clock on screen with margin
+clockGroup.rotation.set(0, 0, 0);
+clockGroup.scale.setScalar(0.72);
 scene.add(clockGroup);
 
 // Build clock – columns built dynamically based on format
@@ -643,11 +739,10 @@ function getTimeDigits() {
   ];
 }
 
-function getTimeDisplayString() {
-  const now = new Date();
-  if (settings.format24 !== false) {
-    return now.toTimeString().slice(0, 8);
-  }
+function getTimeDisplayString(date, use24) {
+  const now = date || new Date();
+  const fmt24 = use24 !== undefined ? use24 : (settings.format24 !== false);
+  if (fmt24) return now.toTimeString().slice(0, 8);
   const h = now.getHours();
   const m = now.getMinutes();
   const s = now.getSeconds();
@@ -656,9 +751,26 @@ function getTimeDisplayString() {
   return `${String(h12).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} ${ampm}`;
 }
 
+function getTimeStringInTimezone(tz) {
+  if (!tz) return '';
+  try {
+    const opts = { timeZone: tz, hour12: settings.format24 === false, hour: '2-digit', minute: '2-digit', second: '2-digit' };
+    return new Date().toLocaleTimeString('en-US', opts);
+  } catch { return '--:--:--'; }
+}
+
 function updateTime() {
   const digits = getTimeDigits();
   timeTextEl.textContent = getTimeDisplayString();
+
+  const altTz = settings.altTimezone || '';
+  const infoAlt = document.getElementById('info-alt');
+  if (altTz) {
+    infoAlt.classList.remove('hidden');
+    infoAlt.textContent = getTimeStringInTimezone(altTz) + ' ' + altTz.split('/').pop();
+  } else {
+    infoAlt.classList.add('hidden');
+  }
 
   const use24 = settings.format24 !== false;
   const maxD = use24 ? 9 : 1;  // For AM/PM column, max digit is 1
@@ -780,14 +892,29 @@ function updateFormatButtons() {
   });
 }
 
+function applyTextSizes() {
+  const mainSize = settings.textSizeMain || 'medium';
+  const altSize = settings.textSizeAlt || 'small';
+  timeTextEl.className = 'text-size-' + mainSize;
+  document.getElementById('info-alt').className = 'text-size-' + altSize + (settings.altTimezone ? '' : ' hidden');
+}
+
+function syncSettingsDropdown() {
+  syncColorPickers();
+  updateThemeButtons();
+  updateFormatButtons();
+  const altSel = document.getElementById('alt-timezone');
+  const mainSel = document.getElementById('text-size-main');
+  const altSizeSel = document.getElementById('text-size-alt');
+  if (altSel) altSel.value = settings.altTimezone || '';
+  if (mainSel) mainSel.value = settings.textSizeMain || 'medium';
+  if (altSizeSel) altSizeSel.value = settings.textSizeAlt || 'small';
+}
+
 settingsGear.addEventListener('click', (e) => {
   e.stopPropagation();
   settingsDropdown.classList.toggle('open');
-  if (settingsDropdown.classList.contains('open')) {
-    syncColorPickers();
-    updateThemeButtons();
-    updateFormatButtons();
-  }
+  if (settingsDropdown.classList.contains('open')) syncSettingsDropdown();
 });
 
 document.addEventListener('click', () => settingsDropdown.classList.remove('open'));
@@ -814,6 +941,18 @@ document.querySelectorAll('.format-opt').forEach((b) => {
   });
 });
 
+document.getElementById('reset-theme-btn')?.addEventListener('click', () => {
+  settings = { ...DEFAULT_SETTINGS };
+  saveSettings(settings);
+  isDay = settings.theme === 'day';
+  applyTheme(isDay);
+  buildClock();
+  applyTheme(isDay);
+  applyTextSizes();
+  updateTime();
+  syncSettingsDropdown();
+});
+
 ['day-bg-top','day-bg-mid','day-bg-bot','day-bar','night-bg-top','night-bg-mid','night-bg-bot','night-bar'].forEach((id) => {
   const el = document.getElementById(id);
   const key = id.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
@@ -825,13 +964,31 @@ document.querySelectorAll('.format-opt').forEach((b) => {
   });
 });
 
+document.getElementById('alt-timezone')?.addEventListener('change', (e) => {
+  settings.altTimezone = e.target.value || '';
+  saveSettings(settings);
+  updateTime();
+  applyTextSizes();
+});
+
+document.getElementById('text-size-main')?.addEventListener('change', (e) => {
+  settings.textSizeMain = e.target.value || 'medium';
+  saveSettings(settings);
+  applyTextSizes();
+});
+
+document.getElementById('text-size-alt')?.addEventListener('change', (e) => {
+  settings.textSizeAlt = e.target.value || 'small';
+  saveSettings(settings);
+  applyTextSizes();
+});
+
 // Init from saved settings
 isDay = settings.theme === 'day';
 applyTheme(isDay);
-if (!settings.format24) {
-  buildClock();
-  updateTime();
-}
+applyTextSizes();
+if (!settings.format24) buildClock();
+updateTime();
 </script>
 
 </body>
